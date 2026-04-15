@@ -140,6 +140,26 @@ def test_build_report_ecdlp_secp256k1_babbush_low_toffoli() -> None:
     json.dumps(report)
 
 
+def test_build_report_ecdlp_secp256k1_babbush_low_logical_qubit() -> None:
+    root = find_square_root()
+    scenario = root / "Configs" / "ecdlp_secp256k1_babbush_2026_low_logical_qubit.yaml"
+    bundle = load_scenario_bundle(scenario, root=root)
+    report = build_scenario_report(bundle)
+
+    ecdlp = report["algorithm_metrics"]["ecdlp"]
+    assert ecdlp["variant"] == "low_logical_qubit_variant"
+    assert ecdlp["logical_qubits_upper_bound"] == 1200
+    assert ecdlp["toffoli_gates_upper_bound"] == 90_000_000
+
+    dash = report["dashboard"]
+    assert dash["code_distance_d"] == 21
+    assert dash["approximate_data_plane_physical_qubits"] == pytest.approx(1_161_600.0)
+    expected_days = 90_000_000.0 * 1.0 / 1e6 / 86400.0
+    assert dash["naive_serial_time_days_from_depth_times_cycle"] == pytest.approx(expected_days)
+
+    json.dumps(report)
+
+
 def test_build_report_surfaces_qcvv_qem_layers_when_loaded() -> None:
     root = find_square_root()
     scen = root / "Configs" / "_test_qcvv_qem_report.yaml"

@@ -93,3 +93,17 @@ def test_load_ecdlp_secp256k1_babbush_2026_low_toffoli() -> None:
     env = bundle.algorithm["ecdlp_logical_resource_envelopes_secp256k1"]["value"]["low_toffoli_variant"]
     assert env["logical_qubits_upper_bound"] == 1450
     assert env["toffoli_gates_upper_bound"] == 70_000_000
+
+
+def test_load_ecdlp_secp256k1_babbush_2026_low_logical_qubit() -> None:
+    root = find_square_root()
+    scenario = root / "Configs" / "ecdlp_secp256k1_babbush_2026_low_logical_qubit.yaml"
+    assert scenario.is_file(), f"Missing scenario file: {scenario}"
+
+    bundle = load_scenario_bundle(scenario, root=root)
+
+    assert bundle.scenario.get("scenario") == "ecdlp_secp256k1_babbush_2026_low_logical_qubit"
+    assert bundle.scenario["target"]["ecdlp_variant"] == "low_logical_qubit_variant"
+    env = bundle.algorithm["ecdlp_logical_resource_envelopes_secp256k1"]["value"]["low_logical_qubit_variant"]
+    assert env["logical_qubits_upper_bound"] == 1200
+    assert env["toffoli_gates_upper_bound"] == 90_000_000
