@@ -40,6 +40,8 @@ New YAML contributions must satisfy `Schemas.yaml` (document header + provenance
 
 The **output contract** for machine-readable reports is `docs/output-contract.md` (`report_contract_version`).
 
+**Monte Carlo (forward model + study YAML for uncertain parameters θ):** see `docs/monte_carlo.md` and `square.mc` (`evaluate_forward_model`, `load_monte_carlo_study_spec`, example `Configs/monte_carlo_study_ecdlp_example.yaml`).
+
 Reports include:
 
 - **`qec_distance_resolution`** — how code distance `d` was chosen: CLI `--d`, explicit `qec_code_distance` / `qec.code_distance`, or `qec.distance_policy: heuristic_union_bound` (phenomenological union bound over logical qubits × depth proxy; **not** the Gidney & Ekerå optimizer).

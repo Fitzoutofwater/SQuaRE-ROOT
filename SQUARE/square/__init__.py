@@ -10,3 +10,5 @@ __all__ = [
     "load_scenario_bundle",
     "report_to_markdown",
 ]
+
+# Monte Carlo scaffolding (optional import path: square.mc)
