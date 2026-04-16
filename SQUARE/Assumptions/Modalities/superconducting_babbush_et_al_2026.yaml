@@ -10,10 +10,10 @@ primary_reference: >-
 date_issued: "2026-03-30"
 notes: >
   Abstract and introduction quote 10^-3 physical error rates and planar connectivity for superconducting
-  headline resource estimates (runtime on order of minutes; physical qubit counts below ~0.5M in their
-  narrative). Microsecond-level cycle and reaction times are not fixed in the abstract; values below match
-  the order-of-magnitude Gidney & Ekerå 2021 Table-2-style superconducting row unless superseded by a table
-  in the full Babbush et al. text—refine from the paper body when extracting detailed timing.
+  headline resource estimates. Microsecond timings are not fixed in the Babbush et al. abstract; **surface
+  cycle (1 µs) and classical reaction (10 µs)** are taken from **Gidney & Ekerå 2021 Table 2 “(ours) 2019”**
+  as an **interim engineering cross-reference** for large planar superconducting stacks—replace if/when
+  Babbush et al. publish explicit per-layer timings in a citable table.
 
 characteristic_physical_gate_error_rate:
   value: 0.001
@@ -28,20 +28,22 @@ characteristic_physical_gate_error_rate:
 surface_code_cycle_time:
   value: 1.0
   unit: "microseconds"
-  confidence: speculative
-  source: "Order-of-magnitude placeholder consistent with large-scale superconducting surface-code models; refine from Babbush et al. main text"
-  date: "2026-03-30"
-  section: "SQuaRE placeholder (not abstract)"
-  notes: Aligns with Gidney & Ekerå 2021 Table 2 “(ours) 2019” cycle scale until replaced by paper-specific timing.
+  confidence: estimated
+  source: "Gidney & Ekerå, Quantum 2021 (Table 2, historical “ours 2019” superconducting row: 1 µs surface-code cycle)"
+  date: "2021-04-15"
+  section: "Table 2"
+  notes: >
+    Interim cross-reference (Babbush abstract does not quote µs). Same headline scale as widely cited
+    large-scale superconducting resource tables; swap for Babbush-specific values when available.
 
 classical_control_reaction_time:
   value: 10.0
   unit: "microseconds"
-  confidence: speculative
-  source: "Order-of-magnitude placeholder; refine from Babbush et al. main text"
-  date: "2026-03-30"
-  section: "SQuaRE placeholder (not abstract)"
-  notes: Used by reaction-limited schedule heuristics in reports when enabled.
+  confidence: estimated
+  source: "Gidney & Ekerå, Quantum 2021 (Table 2, “ours 2019” row: 10 µs classical control / reaction)"
+  date: "2021-04-15"
+  section: "Table 2"
+  notes: Interim cross-reference for reaction-limited schedule heuristics; refine from Babbush et al. if cited.
 
 connectivity_model:
   value: "planar_nearest_neighbor"

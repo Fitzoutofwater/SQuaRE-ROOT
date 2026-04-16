@@ -30,13 +30,17 @@ Build metadata (`*.egg-info/`, `__pycache__/`, `.pytest_cache/`) is gitignored a
 
 Use `square.loader.load_scenario_bundle` with a YAML under `Configs/` that lists relative `paths` to modality, `qec_code`, `magic`, `algorithm`, and optional `magic_aux`, `qcvv`, `qem`. Paths are resolved from the repo root (the directory that contains `Assumptions/Schemas.yaml`).
 
-Example scenario: `Configs/rsa2048_gidney_ekera_2021_parallel.yaml`.
+Example scenarios: `Configs/rsa2048_gidney_ekera_2021_parallel.yaml` (RSA-2048); ECDLP secp256k1 (Babbush et al.): `Configs/ecdlp_secp256k1_babbush_2026_low_toffoli.yaml` and `Configs/ecdlp_secp256k1_babbush_2026_low_logical_qubit.yaml`. **Validation / literature comparison:** add entries to `docs/validation_index.yaml` and prose under `docs/validation_overview.md` (one overview file + structured index, not one `.md` per paper).
+
+**Before opening a PR:** from the `SQUARE/` directory run `py -m pytest` (or `pytest`) and ensure the full suite passes.
 
 New YAML contributions must satisfy `Schemas.yaml` (document header + provenance on every parameter: `value`, `unit`, `confidence`, `source`, `date`; add `doi` / `section` / `notes` when useful).
 
 ### Reports (JSON / Markdown)
 
 The **output contract** for machine-readable reports is `docs/output-contract.md` (`report_contract_version`).
+
+**Monte Carlo (forward model + study YAML for uncertain parameters θ):** see `docs/monte_carlo.md` and `square.mc` (`evaluate_forward_model`, `load_monte_carlo_study_spec`, example `Configs/monte_carlo_study_ecdlp_example.yaml`).
 
 Reports include:
 
