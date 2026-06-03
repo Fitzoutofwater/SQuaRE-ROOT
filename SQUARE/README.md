@@ -62,7 +62,7 @@ Reports include:
 
 After install, load a scenario and print a report:
 
-The scenario YAML path must resolve **under** the SQuaRE project root (the directory containing `Assumptions/Schemas.yaml`). Use `--root <path>` when your cwd or scenario path would otherwise leave the file outside that tree (same containment as `paths.*` references). Exit codes: `0` success; `1` load/build/Markdown/JSON errors (stderr prefixed `square-report:`); `2` invalid flags (e.g. `--d` / `--n` less than 1).
+The scenario YAML path must resolve **under** the SQuaRE project root (the directory containing `Assumptions/Schemas.yaml`). Use `--root <path>` when your cwd or scenario path would otherwise leave the file outside that tree (same containment as `paths.*` references). Exit codes: `0` success; `1` load/build/Markdown/JSON errors (stderr prefixed `square-report:`); `2` invalid flags (e.g. `--d` / `--n` less than 1); `3` optional `--plot` failure after report output; `4` optional `--sankey` failure after report output.
 
 ```bash
 square-report Configs/rsa2048_gidney_ekera_2021_parallel.yaml
@@ -78,6 +78,7 @@ From Python: `square.build_scenario_report(square.load_scenario_bundle(path))` a
 ### Charts and interactive exploration
 
 - **CLI plots (optional):** after `pip install -e ".[plots]"` (or add `matplotlib`), append **`--plot`** to `square-report` to write a PNG of the union failure proxy, magic throughput multiplier / adequacy, and schedule text. Default path: `<scenario_stem>_report_semantics.png`; override with **`--plot-output PATH`**. JSON/Markdown is written to stdout **before** the plot; if plotting fails, exit code is **`3`** (report was already emitted). The same **`--plot`** on **`square-mc`** writes `mc_samples_<study_id>_semantics.png` (or `--plot-output`). Use **`--plot-theta <PARAMETER_LAYERS key>`** to fix the MC scatter x-axis (must appear as a column in the sample CSV).
+- **CLI Sankey SVG:** append **`--sankey`** to `square-report` to write a deterministic resource-flow SVG from the same JSON report: physical layer → QEC → magic → logical error rate → operations budget → CRQC feasibility. Default path: `<scenario_stem>_report_sankey.svg`; override with **`--sankey-output PATH`**. This renderer uses only the standard library, so the `[plots]` extra is not required. Example output: [`docs/images/oratomic_gold_path_sankey.svg`](docs/images/oratomic_gold_path_sankey.svg).
 - **Script:** `python scripts/plot_mc_csv.py path/to/mc_samples.csv` re-renders that figure from an existing CSV; **`--theta`** / **`-t`** matches **`square-mc --plot-theta`**.
 - **Notebook:** `notebooks/osre_interactive_report.ipynb` — sliders only override keys in `PARAMETER_LAYERS` that exist in the loaded stack; **Build report** shows `extract_report_plot_frame` plus warnings and the same semantics PNG (`pip install -e ".[interactive]"`).
 - **Thin web UI:** `pip install -e ".[web]"` then from `SQUARE/`: `streamlit run scripts/interactive_report_streamlit.py` — same binding rules as the notebook.

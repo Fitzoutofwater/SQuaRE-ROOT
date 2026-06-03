@@ -14,6 +14,7 @@ from __future__ import annotations
 import csv
 import sys
 from collections.abc import Mapping, Sequence
+from html import escape
 from io import BufferedIOBase
 from pathlib import Path
 from typing import Any
@@ -27,7 +28,9 @@ _extra_plot_dash_keys: tuple[str, ...] = (
     "schedule_calibration_ratio_table2_over_model_v1",
 )
 REPORT_PLOT_DASHBOARD_KEYS: tuple[str, ...] = tuple(
-    dict.fromkeys([dash for _, dash in MC_DASHBOARD_METRIC_FIELDS] + list(_extra_plot_dash_keys))
+    dict.fromkeys(
+        [dash for _, dash in MC_DASHBOARD_METRIC_FIELDS] + list(_extra_plot_dash_keys)
+    )
 )
 
 
@@ -52,7 +55,9 @@ def extract_report_plot_frame(report: Mapping[str, Any]) -> dict[str, Any]:
         "scenario": name,
         "report_contract_version": report.get("report_contract_version"),
         "logical_error_rate_per_cycle": p_l,
-        "warnings_count": len(report["warnings"]) if isinstance(report.get("warnings"), list) else None,
+        "warnings_count": len(report["warnings"])
+        if isinstance(report.get("warnings"), list)
+        else None,
     }
     for k in REPORT_PLOT_DASHBOARD_KEYS:
         out[k] = dash.get(k)
@@ -88,7 +93,11 @@ def _pick_mc_theta_column(
         if theta_parameter_key in row_keys:
             return theta_parameter_key
         return None
-    order = list(study_parameter_key_order) if study_parameter_key_order else list(PARAMETER_LAYERS.keys())
+    order = (
+        list(study_parameter_key_order)
+        if study_parameter_key_order
+        else list(PARAMETER_LAYERS.keys())
+    )
     for k in order:
         if k not in PARAMETER_LAYERS or k not in row_keys:
             continue
@@ -148,15 +157,34 @@ def write_report_semantics_png(
     ax.set_title("Magic throughput\n(runtime multiplier if limited)")
     if mult is not None and isinstance(mult, (int, float)) and float(mult) > 0:
         m = float(mult)
-        ax.barh([0], [min(m, 50.0)], color="#9b2c2c" if m > 1.0001 else "#276749", height=0.35)
+        ax.barh(
+            [0],
+            [min(m, 50.0)],
+            color="#9b2c2c" if m > 1.0001 else "#276749",
+            height=0.35,
+        )
         ax.set_xlim(0, max(2.0, min(m, 50.0) * 1.1))
         ax.set_yticks([])
         ax.set_xlabel("× notional wall-clock (proxy; capped in display at 50)")
         ax.text(min(m, 50.0) * 0.05, 0, f"{m:.4g}", va="center", fontsize=9)
         if m > 50:
-            ax.annotate(f"true {m:.3g}", xy=(1, 0), xycoords="axes fraction", ha="right", fontsize=8)
+            ax.annotate(
+                f"true {m:.3g}",
+                xy=(1, 0),
+                xycoords="axes fraction",
+                ha="right",
+                fontsize=8,
+            )
     else:
-        ax.text(0.5, 0.5, "N/A\n(check warnings)", ha="center", va="center", transform=ax.transAxes, fontsize=9)
+        ax.text(
+            0.5,
+            0.5,
+            "N/A\n(check warnings)",
+            ha="center",
+            va="center",
+            transform=ax.transAxes,
+            fontsize=9,
+        )
         ax.set_xticks([])
         ax.set_yticks([])
 
@@ -171,7 +199,15 @@ def write_report_semantics_png(
         f"p_L (phenomenological / cycle): {p_l!r}",
         f"warnings: {frame.get('warnings_count')!r}",
     ]
-    ax.text(0.02, 0.98, "\n".join(lines), transform=ax.transAxes, va="top", fontsize=9, family="monospace")
+    ax.text(
+        0.02,
+        0.98,
+        "\n".join(lines),
+        transform=ax.transAxes,
+        va="top",
+        fontsize=9,
+        family="monospace",
+    )
 
     if isinstance(path, (str, Path)):
         outp = Path(path)
@@ -181,6 +217,198 @@ def write_report_semantics_png(
         return outp
     fig.savefig(path, dpi=dpi)
     plt.close(fig)
+    return path
+
+
+def _metric_value(report: Mapping[str, Any], *path: str) -> Any:
+    cur: Any = report
+    for key in path:
+        if not isinstance(cur, Mapping):
+            return None
+        cur = cur.get(key)
+    return cur
+
+
+def _format_metric(value: Any, *, unit: str = "") -> str:
+    if isinstance(value, bool):
+        text = str(value)
+    elif isinstance(value, (int, float)):
+        v = float(value)
+        if v == 0:
+            text = "0"
+        elif abs(v) >= 1_000_000_000:
+            text = f"{v / 1_000_000_000:.3g}B"
+        elif abs(v) >= 1_000_000:
+            text = f"{v / 1_000_000:.3g}M"
+        elif abs(v) >= 1_000:
+            text = f"{v / 1_000:.3g}k"
+        elif abs(v) < 0.001:
+            text = f"{v:.3g}"
+        else:
+            text = f"{v:.4g}"
+    elif value is None:
+        text = "N/A"
+    else:
+        text = str(value)
+    return f"{text} {unit}".strip()
+
+
+def _path_stem(value: Any) -> str | None:
+    if not isinstance(value, str) or not value:
+        return None
+    return Path(value).stem
+
+
+def _report_sankey_nodes(report: Mapping[str, Any]) -> list[dict[str, str]]:
+    scenario = _metric_value(report, "scenario")
+    scenario_paths = scenario.get("paths", {}) if isinstance(scenario, Mapping) else {}
+    dashboard_raw = report.get("dashboard")
+    dashboard = dashboard_raw if isinstance(dashboard_raw, Mapping) else {}
+    logical_raw = report.get("logical_fault_model")
+    logical = logical_raw if isinstance(logical_raw, Mapping) else {}
+    algorithm_raw = report.get("algorithm_metrics")
+    algorithm = algorithm_raw if isinstance(algorithm_raw, Mapping) else {}
+    evaluated_raw = algorithm.get("evaluated")
+    evaluated = evaluated_raw if isinstance(evaluated_raw, Mapping) else {}
+
+    depth = None
+    logical_qubits = None
+    if isinstance(evaluated, Mapping):
+        depth_entry = evaluated.get("abstract_measurement_depth_layers")
+        if isinstance(depth_entry, Mapping):
+            depth = depth_entry.get("value")
+        logical_entry = evaluated.get("abstract_logical_qubits")
+        if isinstance(logical_entry, Mapping):
+            logical_qubits = logical_entry.get("value")
+
+    return [
+        {
+            "title": "Physical layer",
+            "label": _path_stem(scenario_paths.get("modality"))
+            or str(
+                _metric_value(report, "physical_layer", "document_id")
+                or "physical layer"
+            ),
+            "metric": _format_metric(
+                dashboard.get("approximate_data_plane_physical_qubits"),
+                unit="physical qubits",
+            ),
+        },
+        {
+            "title": "QEC",
+            "label": _path_stem(scenario_paths.get("qec_code")) or "QEC profile",
+            "metric": f"d={_format_metric(dashboard.get('code_distance_d'))}, {_format_metric(logical_qubits)} logical qubits",
+        },
+        {
+            "title": "Magic",
+            "label": _path_stem(scenario_paths.get("magic")) or "magic-state profile",
+            "metric": _format_metric(
+                dashboard.get("magic_limited_runtime_multiplier"),
+                unit="runtime multiplier",
+            ),
+        },
+        {
+            "title": "Logical error rate",
+            "label": "logical fault model",
+            "metric": _format_metric(
+                logical.get("logical_error_rate_per_cycle"), unit="per cycle"
+            ),
+        },
+        {
+            "title": "Operations budget",
+            "label": "algorithm depth",
+            "metric": _format_metric(depth, unit="layers"),
+        },
+        {
+            "title": "CRQC feasibility",
+            "label": str(
+                _metric_value(report, "scenario", "target", "problem")
+                or "target problem"
+            ),
+            "metric": _format_metric(
+                dashboard.get("logical_failure_proxy_union_depth_phenomenological"),
+                unit="failure proxy",
+            ),
+        },
+    ]
+
+
+def write_report_sankey_svg(
+    path: str | Path | BufferedIOBase,
+    report: Mapping[str, Any],
+) -> Path | BufferedIOBase:
+    """
+    Write a deterministic SVG resource-flow diagram for a scenario report.
+
+    The report mixes unlike units, so link width is intentionally decorative and
+    node labels carry the actual metrics from the JSON report.
+    """
+    nodes = _report_sankey_nodes(report)
+    width = 1120
+    height = 430
+    node_w = 150
+    node_h = 86
+    y = 150
+    x0 = 38
+    gap = (width - (2 * x0) - (len(nodes) * node_w)) / (len(nodes) - 1)
+    colors = ["#2f6f73", "#4e7d45", "#9a6a20", "#7d5388", "#565f73", "#8a4b42"]
+
+    scenario_name = _metric_value(report, "scenario", "scenario") or "SQuaRE scenario"
+    parts: list[str] = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" role="img" '
+        f'aria-labelledby="title desc">',
+        f'<title id="title">SQuaRE resource-flow Sankey for {escape(str(scenario_name))}</title>',
+        '<desc id="desc">Physical layer to QEC to magic to logical error rate to operations budget to CRQC feasibility.</desc>',
+        '<rect width="1120" height="430" fill="#fbfbf8"/>',
+        f'<text x="38" y="44" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#1f2933">{escape(str(scenario_name))}</text>',
+        '<text x="38" y="70" font-family="Arial, sans-serif" font-size="13" fill="#53606d">Resource-flow structure from square-report JSON</text>',
+    ]
+
+    centers: list[tuple[float, float]] = []
+    for i in range(len(nodes)):
+        x = x0 + i * (node_w + gap)
+        centers.append((x + node_w / 2, y + node_h / 2))
+
+    for i in range(len(nodes) - 1):
+        sx, sy = centers[i]
+        tx, ty = centers[i + 1]
+        stroke = 18 - min(i, 3) * 2
+        start_x = sx + node_w / 2 - 5
+        end_x = tx - node_w / 2 + 5
+        control_dx = max(18.0, (end_x - start_x) * 0.45)
+        parts.append(
+            f'<path d="M {start_x:.1f} {sy:.1f} C {start_x + control_dx:.1f} {sy:.1f}, '
+            f'{end_x - control_dx:.1f} {ty:.1f}, {end_x:.1f} {ty:.1f}" '
+            f'stroke="{colors[i]}" stroke-width="{stroke}" stroke-opacity="0.34" fill="none"/>'
+        )
+
+    for i, node in enumerate(nodes):
+        x = x0 + i * (node_w + gap)
+        color = colors[i]
+        parts.extend(
+            [
+                f'<rect x="{x:.1f}" y="{y}" width="{node_w}" height="{node_h}" rx="8" fill="#ffffff" stroke="{color}" stroke-width="2"/>',
+                f'<rect x="{x:.1f}" y="{y}" width="{node_w}" height="9" rx="4" fill="{color}"/>',
+                f'<text x="{x + 12:.1f}" y="{y + 30}" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#24313d">{escape(node["title"])}</text>',
+                f'<text x="{x + 12:.1f}" y="{y + 51}" font-family="Arial, sans-serif" font-size="11" fill="#334155">{escape(node["label"][:28])}</text>',
+                f'<text x="{x + 12:.1f}" y="{y + 70}" font-family="Arial, sans-serif" font-size="10" fill="#64748b">{escape(node["metric"][:34])}</text>',
+            ]
+        )
+
+    parts.append(
+        '<text x="38" y="380" font-family="Arial, sans-serif" font-size="11" fill="#697386">'
+        "Link widths are visual guides; node metrics retain their native report units."
+        "</text>"
+    )
+    parts.append("</svg>\n")
+    svg = "\n".join(parts)
+
+    if isinstance(path, (str, Path)):
+        outp = Path(path)
+        outp.parent.mkdir(parents=True, exist_ok=True)
+        outp.write_text(svg, encoding="utf-8")
+        return outp
+    path.write(svg.encode("utf-8"))
     return path
 
 
@@ -238,25 +466,51 @@ def write_mc_semantics_png(
     )
 
     fig, axes = plt.subplots(1, 3, figsize=(12, 3.2), constrained_layout=True)
-    fig.suptitle("Monte Carlo — failure proxy, magic multiplier, θ correlation", fontsize=11)
+    fig.suptitle(
+        "Monte Carlo — failure proxy, magic multiplier, θ correlation", fontsize=11
+    )
 
     ax = axes[0]
     ax.set_title("Union failure proxy")
     if fails:
-        ax.hist(fails, bins=min(30, max(5, len(fails) // 3)), color="#2c5282", edgecolor="white")
+        ax.hist(
+            fails,
+            bins=min(30, max(5, len(fails) // 3)),
+            color="#2c5282",
+            edgecolor="white",
+        )
         ax.set_xlabel("min(1, D×p_L)")
         ax.set_ylabel("count")
     else:
-        ax.text(0.5, 0.5, "no numeric\nsamples", ha="center", va="center", transform=ax.transAxes)
+        ax.text(
+            0.5,
+            0.5,
+            "no numeric\nsamples",
+            ha="center",
+            va="center",
+            transform=ax.transAxes,
+        )
 
     ax = axes[1]
     ax.set_title("Magic-limited multiplier")
     if mults:
-        ax.hist(mults, bins=min(30, max(5, len(mults) // 3)), color="#744210", edgecolor="white")
+        ax.hist(
+            mults,
+            bins=min(30, max(5, len(mults) // 3)),
+            color="#744210",
+            edgecolor="white",
+        )
         ax.set_xlabel("× wall-clock (proxy)")
         ax.set_ylabel("count")
     else:
-        ax.text(0.5, 0.5, "no numeric\nsamples", ha="center", va="center", transform=ax.transAxes)
+        ax.text(
+            0.5,
+            0.5,
+            "no numeric\nsamples",
+            ha="center",
+            va="center",
+            transform=ax.transAxes,
+        )
 
     ax = axes[2]
     ax.set_title("θ vs failure proxy" + (f"\n({param_key})" if param_key else ""))
@@ -274,7 +528,14 @@ def write_mc_semantics_png(
         ax.set_xlabel(param_key)
         ax.set_ylabel(fail_key)
     else:
-        ax.text(0.5, 0.5, "no θ column\nor failure proxy", ha="center", va="center", transform=ax.transAxes)
+        ax.text(
+            0.5,
+            0.5,
+            "no θ column\nor failure proxy",
+            ha="center",
+            va="center",
+            transform=ax.transAxes,
+        )
 
     if isinstance(path, (str, Path)):
         outp = Path(path)
@@ -293,4 +554,5 @@ __all__ = [
     "load_mc_samples_rows_from_csv",
     "write_mc_semantics_png",
     "write_report_semantics_png",
+    "write_report_sankey_svg",
 ]

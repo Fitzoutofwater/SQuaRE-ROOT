@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from square.loader import find_square_root, load_scenario_bundle
-from square.plotting import write_report_semantics_png
+from square.plotting import write_report_sankey_svg, write_report_semantics_png
 from square.report import build_scenario_report, report_to_markdown
 
 
@@ -18,7 +18,8 @@ def main(argv: list[str] | None = None) -> int:
 
     :param argv: Arguments (excluding program name); defaults to ``sys.argv[1:]``.
     :returns: Process exit code: ``0`` success; ``1`` load/build/serialize errors; ``2`` invalid flags;
-        ``3`` optional ``--plot`` failed after JSON/Markdown was written (stdout already emitted).
+        ``3`` optional ``--plot`` failed after JSON/Markdown was written (stdout already emitted);
+        ``4`` optional ``--sankey`` failed after JSON/Markdown was written.
     """
     parser = argparse.ArgumentParser(
         prog="square-report",
@@ -66,6 +67,18 @@ def main(argv: list[str] | None = None) -> int:
         metavar="PATH",
         help="PNG path for --plot (default: <scenario_stem>_report_semantics.png in cwd).",
     )
+    parser.add_argument(
+        "--sankey",
+        action="store_true",
+        help="Also write a deterministic SVG resource-flow Sankey from the report JSON.",
+    )
+    parser.add_argument(
+        "--sankey-output",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="SVG path for --sankey (default: <scenario_stem>_report_sankey.svg in cwd).",
+    )
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
     if args.d is not None and args.d < 1:
@@ -76,7 +89,11 @@ def main(argv: list[str] | None = None) -> int:
         print("square-report: --n must be a positive integer (>= 1).", file=sys.stderr)
         return 2
 
-    root = args.root.resolve() if args.root is not None else find_square_root(args.scenario)
+    root = (
+        args.root.resolve()
+        if args.root is not None
+        else find_square_root(args.scenario)
+    )
     try:
         bundle = load_scenario_bundle(
             args.scenario,
@@ -107,7 +124,9 @@ def main(argv: list[str] | None = None) -> int:
             json.dump(report, sys.stdout, indent=2, allow_nan=False)
             sys.stdout.write("\n")
         except (BrokenPipeError, OSError, ValueError) as exc:
-            print(f"square-report: cannot serialize or write JSON: {exc}", file=sys.stderr)
+            print(
+                f"square-report: cannot serialize or write JSON: {exc}", file=sys.stderr
+            )
             return 1
 
     if args.plot:
@@ -116,8 +135,23 @@ def main(argv: list[str] | None = None) -> int:
             plot_path = Path(f"{args.scenario.stem}_report_semantics.png")
         try:
             write_report_semantics_png(plot_path, report)
-            print(f"square-report: wrote plot -> {plot_path.resolve()}", file=sys.stderr)
+            print(
+                f"square-report: wrote plot -> {plot_path.resolve()}", file=sys.stderr
+            )
         except RuntimeError as exc:
             print(f"square-report: --plot failed: {exc}", file=sys.stderr)
             return 3
+    if args.sankey:
+        sankey_path = args.sankey_output
+        if sankey_path is None:
+            sankey_path = Path(f"{args.scenario.stem}_report_sankey.svg")
+        try:
+            write_report_sankey_svg(sankey_path, report)
+            print(
+                f"square-report: wrote Sankey -> {sankey_path.resolve()}",
+                file=sys.stderr,
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            print(f"square-report: --sankey failed: {exc}", file=sys.stderr)
+            return 4
     return 0
