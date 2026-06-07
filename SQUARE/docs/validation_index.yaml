@@ -73,3 +73,47 @@ entries:
       - modality_timings: neutral_atom_cain_et_al_2026 uses documented µs placeholders until pinned from full text.
       - qec_proxy: qldpc_cain_et_al_2026 patch formula is a symbolic placeholder in d, not a literal LDPC layout tensor.
     overview_section_anchor: ecdlp-cain-et-al-2026-neutral-atom-qldpc
+
+  - id: ecdlp_secp256k1_ibm_heron_r2_low_toffoli
+    algorithm_document_id: ecdlp_secp256k1_babbush_et_al_2026
+    example_scenario: Configs/ecdlp_secp256k1_ibm_heron_r2_low_toffoli.yaml
+    primary_reference: >-
+      IBM Quantum. IBM Quantum System Two with Heron r2 processor: device specifications and performance
+      characterization. IBM Research Blog and Quantum Volume benchmarks (2024).
+    date_issued: "2024-12-01"
+    comparison_scope: >-
+      Illustrative pairing of IBM Heron r2 physical error rates with the Babbush ECDLP logical envelope.
+      Not a published end-to-end benchmark.
+    paper_headlines:
+      - "IBM Heron r2 heavy-hex tunable coupler architecture: median 2Q ECR error ~3e-4, T1 ~270µs, T2 ~190µs."
+    report_json_paths:
+      naive_serial_days: dashboard.naive_serial_time_days_from_depth_times_cycle
+      code_distance_d: dashboard.code_distance_d
+      data_plane_physical_qubits: dashboard.approximate_data_plane_physical_qubits
+    representative_run_snapshot: >-
+      d≈15, ~742K data-plane physical qubits.
+    discrepancy_categories:
+      - accounting: No end-to-end physical totals reported by IBM for this application.
+    overview_section_anchor: cross-modality-contrast-superconducting-vs-trapped-ion
+
+  - id: ecdlp_secp256k1_quantinuum_helios
+    algorithm_document_id: ecdlp_secp256k1_babbush_et_al_2026
+    example_scenario: Configs/ecdlp_secp256k1_quantinuum_helios.yaml
+    primary_reference: >-
+      Quantinuum. Helios: Quantinuum's Quantum Charge-Coupled Device (QCCD) trapped-ion processor.
+      Quantinuum Technical Specifications and H-Series Benchmarks (2025).
+    date_issued: "2025-04-01"
+    comparison_scope: >-
+      Illustrative pairing of Quantinuum Helios physical error rates and trapped-ion cycle times with the Babbush
+      ECDLP logical envelope to demonstrate cross-modality scaling.
+    paper_headlines:
+      - "Quantinuum Helios QCCD trapped-ion architecture: 2Q ZZ-gate error ~8e-4, all-to-all connectivity."
+    report_json_paths:
+      naive_serial_days: dashboard.naive_serial_time_days_from_depth_times_cycle
+      code_distance_d: dashboard.code_distance_d
+      data_plane_physical_qubits: dashboard.approximate_data_plane_physical_qubits
+    representative_run_snapshot: >-
+      d≈19, ~1.16M data-plane physical qubits. Cycle time is 1000µs, yielding serial time ~1000x longer than superconducting.
+    discrepancy_categories:
+      - accounting: No end-to-end physical totals reported by Quantinuum for this application.
+    overview_section_anchor: cross-modality-contrast-superconducting-vs-trapped-ion

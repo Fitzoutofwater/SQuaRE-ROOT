@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from square.loader import find_square_root, load_scenario_bundle
-from square.plotting import write_report_semantics_png
+from square.plotting import write_report_semantics_png, write_sankey_html
 from square.report import build_scenario_report, report_to_markdown
 
 
@@ -66,6 +66,18 @@ def main(argv: list[str] | None = None) -> int:
         metavar="PATH",
         help="PNG path for --plot (default: <scenario_stem>_report_semantics.png in cwd).",
     )
+    parser.add_argument(
+        "--sankey",
+        action="store_true",
+        help="Write an interactive HTML Sankey resource-flow diagram (requires plotly).",
+    )
+    parser.add_argument(
+        "--sankey-output",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="HTML path for --sankey (default: <scenario_stem>_sankey.html in cwd).",
+    )
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
     if args.d is not None and args.d < 1:
@@ -119,5 +131,16 @@ def main(argv: list[str] | None = None) -> int:
             print(f"square-report: wrote plot -> {plot_path.resolve()}", file=sys.stderr)
         except RuntimeError as exc:
             print(f"square-report: --plot failed: {exc}", file=sys.stderr)
+            return 3
+
+    if args.sankey:
+        sankey_path = args.sankey_output
+        if sankey_path is None:
+            sankey_path = Path(f"{args.scenario.stem}_sankey.html")
+        try:
+            out = write_sankey_html(sankey_path, report)
+            print(f"square-report: wrote sankey -> {out}", file=sys.stderr)
+        except RuntimeError as exc:
+            print(f"square-report: --sankey failed: {exc}", file=sys.stderr)
             return 3
     return 0

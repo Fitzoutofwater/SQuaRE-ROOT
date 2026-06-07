@@ -287,10 +287,206 @@ def write_mc_semantics_png(
     return path
 
 
+def write_sankey_html(
+    path: str | Path,
+    report: Mapping[str, Any],
+) -> Path:
+    """
+    Write a Plotly Sankey diagram as a self-contained HTML file.
+
+    The diagram follows the flow structure from the SQuaRE deck slide 4:
+    Physical Layer → QEC Overhead → Magic State Production
+    → Logical Error Model → Operations Budget → CRQC Feasibility Score.
+
+    Node ordering and colours are fixed for deterministic output across scenarios.
+
+    :param path: Output file path for the HTML file.
+    :param report: Full scenario report dict from :func:`square.report.build_scenario_report`.
+    :returns: Resolved output path.
+    :raises RuntimeError: If plotly is not installed.
+    """
+    try:
+        import plotly.graph_objects as go  # type: ignore[import]
+    except ImportError as exc:
+        raise RuntimeError(
+            "Sankey output requires plotly. Install with: pip install plotly"
+        ) from exc
+
+    dash = report.get("dashboard") or {}
+    phys = report.get("physical_rollup") or {}
+    lfm = report.get("logical_fault_model") or {}
+    algo = report.get("algorithm_metrics") or {}
+    scen = report.get("scenario") or {}
+    scenario_name = scen.get("scenario", "scenario") if isinstance(scen, dict) else "scenario"
+
+    # ── helpers ──────────────────────────────────────────────────────────────
+    def _fmt(v: Any, unit: str = "", scale: float = 1.0, digits: int = 3) -> str:
+        if v is None or not isinstance(v, (int, float)):
+            return "N/A"
+        return f"{v * scale:,.{digits}g}{unit}"
+
+    # ── extract values ────────────────────────────────────────────────────────
+    gate_error = None
+    mod_params = (report.get("layers") or {}).get("modality") or {}
+    if isinstance(mod_params, dict):
+        params = mod_params.get("parameters") or {}
+        ge = params.get("characteristic_physical_gate_error_rate") or {}
+        gate_error = ge.get("value") if isinstance(ge, dict) else None
+
+    cycle_us = None
+    if isinstance(mod_params, dict):
+        params = mod_params.get("parameters") or {}
+        cy = params.get("surface_code_cycle_time") or {}
+        cycle_us = cy.get("value") if isinstance(cy, dict) else None
+
+    t1_us = None
+    if isinstance(mod_params, dict):
+        params = mod_params.get("parameters") or {}
+        t1e = params.get("coherence_time_t1_microseconds") or {}
+        t1_us = t1e.get("value") if isinstance(t1e, dict) else None
+
+    code_d = phys.get("code_distance_d")
+    qubits_per_logical = phys.get("physical_qubits_per_logical")
+    logical_qubits = phys.get("abstract_logical_qubits_at_n")
+    data_plane_qubits = phys.get("approximate_data_plane_physical_qubits")
+    logical_err = lfm.get("logical_error_rate_per_cycle")
+
+    ecdlp = algo.get("ecdlp") or {}
+    toffoli = ecdlp.get("toffoli_gates_upper_bound") or algo.get("evaluated", {}).get(
+        "abstract_measurement_depth_layers", {}
+    ).get("value")
+
+    naive_days = dash.get("naive_serial_time_days_from_depth_times_cycle")
+    failure_proxy = dash.get("logical_failure_proxy_union_depth_phenomenological")
+
+    # ── node definitions (fixed order = fixed layout) ─────────────────────────
+    # Categories: 0=physical, 1=qec, 2=magic, 3=logical, 4=ops, 5=feasibility
+    COLORS = [
+        "#3B82F6",  # 0 physical  – blue
+        "#8B5CF6",  # 1 qec       – purple
+        "#F97316",  # 2 magic     – orange
+        "#10B981",  # 3 logical   – emerald
+        "#EAB308",  # 4 ops       – yellow
+        "#EF4444",  # 5 feasibility – red
+    ]
+
+    nodes = [
+        # Physical layer (0–3)
+        {"label": f"Gate Error Rate\n{_fmt(gate_error, '', 1, 4)}", "color": COLORS[0]},          # 0
+        {"label": f"Coherence T1\n{_fmt(t1_us, ' µs', 1, 4)}", "color": COLORS[0]},               # 1
+        {"label": f"QEC Cycle Time\n{_fmt(cycle_us, ' µs')}", "color": COLORS[0]},                # 2
+        {"label": f"Physical Qubits/Logical\n{_fmt(qubits_per_logical, '', 1, 0)}", "color": COLORS[0]},  # 3
+        # QEC overhead (4–5)
+        {"label": f"Code Distance d={code_d or 'N/A'}", "color": COLORS[1]},                       # 4
+        {"label": f"Data-Plane Qubits\n{_fmt(data_plane_qubits, '', 1e-6, 3)}M", "color": COLORS[1]},  # 5
+        # Magic state production (6)
+        {"label": "Magic State Production\n(CCZ / T factories)", "color": COLORS[2]},              # 6
+        # Logical error model (7–8)
+        {"label": f"Logical Error Rate\n{_fmt(logical_err, '', 1, 2)}/cycle", "color": COLORS[3]}, # 7
+        {"label": f"Logical Qubits\n{_fmt(logical_qubits, '', 1, 0)}", "color": COLORS[3]},       # 8
+        # Operations budget (9)
+        {"label": f"Operations Budget\n{_fmt(toffoli, '', 1e-6, 3)}M Toffoli", "color": COLORS[4]},  # 9
+        # CRQC feasibility (10–11)
+        {"label": f"Naive Serial Time\n{_fmt(naive_days, ' days', 1, 4)}", "color": COLORS[5]},  # 10
+        {"label": f"Failure Proxy\n{_fmt(failure_proxy, '', 1, 4)}", "color": COLORS[5]},        # 11
+    ]
+
+    # ── links (source → target, value = display weight) ──────────────────────
+    # Value is normalised so all flows are visible; use log-scale proxies where needed.
+    BASE = 10.0
+    links = [
+        # Physical → QEC code distance
+        {"source": 0, "target": 4, "value": BASE * 3, "label": "sets threshold margin"},
+        {"source": 1, "target": 4, "value": BASE * 1, "label": "coherence supports d"},
+        {"source": 2, "target": 4, "value": BASE * 2, "label": "cycle time drives d"},
+        # QEC → data-plane qubits
+        {"source": 4, "target": 5, "value": BASE * 4, "label": "2(d+1)² × logical qubits"},
+        {"source": 3, "target": 5, "value": BASE * 2, "label": "phys/logical footprint"},
+        # Physical → logical error rate
+        {"source": 0, "target": 7, "value": BASE * 3, "label": "p_eff → p_L"},
+        {"source": 4, "target": 7, "value": BASE * 2, "label": "d sets p_L exponent"},
+        # QEC → logical qubits
+        {"source": 8, "target": 5, "value": BASE * 1, "label": "logical qubit count"},
+        # Magic → operations budget
+        {"source": 6, "target": 9, "value": BASE * 2, "label": "T/CCZ supply rate"},
+        # Logical → ops budget
+        {"source": 8, "target": 9, "value": BASE * 2, "label": "circuit logical width"},
+        {"source": 7, "target": 9, "value": BASE * 1, "label": "error budget allocation"},
+        # Ops budget + cycle time → naive serial time
+        {"source": 9, "target": 10, "value": BASE * 3, "label": "depth layers"},
+        {"source": 2, "target": 10, "value": BASE * 3, "label": "cycle time × depth"},
+        # Logical error + depth → failure proxy
+        {"source": 7, "target": 11, "value": BASE * 3, "label": "p_L × depth"},
+        {"source": 9, "target": 11, "value": BASE * 2, "label": "ops depth"},
+        # Data-plane qubits flows to feasibility
+        {"source": 5, "target": 11, "value": BASE * 1, "label": "qubit footprint"},
+    ]
+
+    def _hex_to_rgba(hex_color: str, alpha: float = 0.5) -> str:
+        """Convert '#RRGGBB' to 'rgba(r,g,b,alpha)' for Plotly link colors."""
+        h = hex_color.lstrip("#")
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+        return f"rgba({r},{g},{b},{alpha})"
+
+    node_labels = [n["label"] for n in nodes]
+    node_colors = [n["color"] for n in nodes]
+    link_sources = [lk["source"] for lk in links]
+    link_targets = [lk["target"] for lk in links]
+    link_values = [lk["value"] for lk in links]
+    link_labels = [lk["label"] for lk in links]
+    link_colors = [_hex_to_rgba(node_colors[s], 0.5) for s in link_sources]
+
+    fig = go.Figure(go.Sankey(
+        arrangement="snap",
+        node=dict(
+            pad=20,
+            thickness=24,
+            line=dict(color="rgba(0,0,0,0.3)", width=0.5),
+            label=node_labels,
+            color=node_colors,
+            hovertemplate="%{label}<extra></extra>",
+        ),
+        link=dict(
+            source=link_sources,
+            target=link_targets,
+            value=link_values,
+            label=link_labels,
+            color=link_colors,
+            hovertemplate="%{label}<br>from %{source.label}<br>to %{target.label}<extra></extra>",
+        ),
+    ))
+
+    fig.update_layout(
+        title=dict(
+            text=(
+                f"<b>SQuaRE Resource Flow — {scenario_name}</b><br>"
+                "<sup>Physical Layer → QEC → Magic → Logical Error → Ops Budget → CRQC Feasibility</sup>"
+            ),
+            font=dict(size=16, color="#1e293b"),
+        ),
+        font=dict(size=11, family="Inter, Arial, sans-serif", color="#1e293b"),
+        paper_bgcolor="#f8fafc",
+        plot_bgcolor="#f8fafc",
+        height=600,
+        margin=dict(l=20, r=20, t=100, b=20),
+    )
+
+    out_path = Path(path).resolve()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.write_html(
+        str(out_path),
+        include_plotlyjs="cdn",
+        full_html=True,
+        config={"displaylogo": False, "responsive": True},
+    )
+    return out_path
+
+
 __all__ = [
     "REPORT_PLOT_DASHBOARD_KEYS",
     "extract_report_plot_frame",
     "load_mc_samples_rows_from_csv",
     "write_mc_semantics_png",
     "write_report_semantics_png",
+    "write_sankey_html",
 ]
