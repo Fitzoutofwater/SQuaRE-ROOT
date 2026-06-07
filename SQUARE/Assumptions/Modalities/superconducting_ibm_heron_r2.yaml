@@ -1,0 +1,177 @@
+# Physical assumptions for the IBM Heron r2 (156-qubit, tunable-coupler) superconducting processor.
+# IBM's Heron r2 chip is a 156-qubit heavy-hex lattice device with tunable couplers, representing
+# IBM's current near-term reference point. Published characterisation data from the 2024 Nature paper
+# and IBM Quantum System Two datasheet are used as primary sources.
+document_id: superconducting_ibm_heron_r2
+schema_version: 1
+primary_reference: >-
+  IBM Quantum. IBM Quantum System Two with Heron r2 processor: device specifications and performance
+  characterization. IBM Research Blog and Quantum Volume benchmarks (2024).
+  https://research.ibm.com/blog/ibm-quantum-roadmap-2033
+doi: "10.1038/s41586-023-06096-3"
+date_issued: "2024-12-01"
+notes: >
+  IBM Heron r2 is a 156-qubit heavy-hex lattice processor with tunable couplers, introduced as part
+  of IBM Quantum System Two. The heavy-hex connectivity limits native 2Q gate connectivity but reduces
+  crosstalk and improves median 2Q gate fidelity significantly over earlier Eagle/Falcon generations.
+  Cycle time and reaction time values below are SQuaRE placeholders consistent with IBM published
+  round-trip latency estimates; refine from device-specific calibration data when available.
+  Gate error rates are derived from IBM's median ECR (echoed cross-resonance) gate characterisation.
+
+characteristic_physical_gate_error_rate:
+  value: 0.0003
+  unit: "error_probability_per_gate"
+  confidence: estimated
+  source: "IBM Quantum (2024), Heron r2 device characterisation; median 2Q ECR gate error ~3e-4 reported in IBM Quantum Platform calibration data and roadmap publications"
+  date: "2024-12-01"
+  section: "Device characterisation"
+  notes: >
+    Median ECR (echoed cross-resonance) 2Q gate error for Heron r2 tunable-coupler architecture.
+    IBM reports median ~0.03% (3e-4) for Heron r2, a significant improvement over Eagle r3 (~6e-3).
+  layer: physical
+
+surface_code_cycle_time:
+  value: 1.0
+  unit: "microseconds"
+  confidence: low
+  source: "SQuaRE placeholder consistent with IBM superconducting gate times; IBM Heron ECR gate ~68ns implies QEC cycle O(1µs) — refine from IBM-specific syndrome extraction schedule"
+  date: "2024-12-01"
+  section: "SQuaRE placeholder"
+  notes: >
+    IBM Heron r2 native ECR gate duration is ~68 ns. A full surface-code syndrome extraction cycle
+    requires multiple gate layers plus measurement, placing cycle time in the ~0.5–2 µs range.
+    Value of 1.0 µs is a conservative placeholder; replace with compiled syndrome schedule.
+
+classical_control_reaction_time:
+  value: 10.0
+  unit: "microseconds"
+  confidence: low
+  source: "SQuaRE placeholder; IBM Quantum System Two control electronics latency not publicly pinned for Heron r2 — order-of-magnitude O(10µs) consistent with superconducting control plane literature"
+  date: "2024-12-01"
+  section: "SQuaRE placeholder"
+  notes: Classical feedback latency for Heron r2 with IBM Quantum System Two is not published in detail; use with caution for reaction-limited schedule heuristics.
+
+connectivity_model:
+  value: "heavy_hex_tunable_coupler"
+  unit: "descriptor"
+  confidence: estimated
+  source: "IBM Quantum (2024), Heron r2 architecture overview; heavy-hex lattice with tunable couplers to suppress ZZ crosstalk"
+  date: "2024-12-01"
+  section: "Architecture overview"
+  notes: Heavy-hex connectivity has lower qubit degree than square-lattice; SWAP overhead for non-adjacent operations must be accounted for in routing.
+  layer: physical
+
+platform_class:
+  value: "superconducting_heavy_hex_tunable_coupler_heron_r2"
+  unit: "descriptor"
+  confidence: estimated
+  source: "IBM Quantum (2024), Heron r2 product documentation"
+  date: "2024-12-01"
+  section: "Device overview"
+  layer: physical
+
+# Extended native physical layer (OSRE memo) — values from IBM published characterisation where available.
+
+coherence_time_t1_microseconds:
+  value: 270.0
+  unit: "microseconds"
+  confidence: estimated
+  source: "IBM Quantum (2024), Heron r2 median T1 ~270 µs reported in IBM Quantum Platform calibration snapshots and IBM Research blog post on Heron r2 launch"
+  date: "2024-12-01"
+  section: "Device characterisation"
+  notes: Median T1 across 156 qubits; individual qubit T1 values range from ~100–500 µs per IBM calibration data.
+  layer: physical
+
+coherence_time_t2_microseconds:
+  value: 190.0
+  unit: "microseconds"
+  confidence: estimated
+  source: "IBM Quantum (2024), Heron r2 median T2 ~190 µs from IBM Quantum Platform calibration data"
+  date: "2024-12-01"
+  section: "Device characterisation"
+  notes: T2 (Hahn echo) median across qubits. T2* (Ramsey) is typically lower; Hahn echo T2 used here.
+  layer: physical
+
+single_qubit_gate_error_rate:
+  value: 0.00015
+  unit: "error_probability_per_gate"
+  confidence: estimated
+  source: "IBM Quantum (2024), Heron r2 median single-qubit gate error ~1.5e-4 from IBM Quantum Platform calibration; consistent with IBM roadmap publications"
+  date: "2024-12-01"
+  section: "Device characterisation"
+  notes: Median SX (√X) gate error reported by IBM for Heron r2. Better than 2Q gate error by ~2×.
+  layer: physical
+
+two_qubit_gate_error_rate:
+  value: 0.0003
+  unit: "error_probability_per_gate"
+  confidence: estimated
+  source: "IBM Quantum (2024), Heron r2 median ECR gate error ~3e-4; ibm.com/quantum/blog/ibm-quantum-heron and IBM Quantum Platform calibration data (2024)"
+  date: "2024-12-01"
+  section: "Device characterisation"
+  layer: physical
+
+measurement_error_rate:
+  value: 0.007
+  unit: "error_probability_per_shot"
+  confidence: estimated
+  source: "IBM Quantum (2024), Heron r2 median readout assignment error ~0.7%; consistent with IBM Quantum Platform calibration snapshots for Heron-class devices"
+  date: "2024-12-01"
+  section: "Device characterisation"
+  notes: Readout fidelity for Heron r2 is improved vs Eagle but readout assignment errors remain ~0.5–1.5% median. 0.7% used as median proxy.
+  layer: physical
+
+idle_error_rate_per_cycle:
+  value: 0.000003
+  unit: "error_probability_per_idle_slot_proxy"
+  confidence: speculative
+  source: "SQuaRE proxy derived from T1=270µs and cycle_time=1µs: p_idle ~ 1 - exp(-t/T1) ≈ 3.7e-6"
+  date: "2024-12-01"
+  section: "SQuaRE OSRE extension"
+  notes: Derived idle error from T1 decay over one code cycle; refine with compiled syndrome round schedule.
+  layer: physical
+
+correlated_noise_parameter:
+  value: 1.0
+  unit: "dimensionless_multiplier"
+  confidence: speculative
+  source: "Baseline — tunable couplers suppress ZZ crosstalk; no explicit correlated-noise multiplier modeled in this SQuaRE profile"
+  date: "2024-12-01"
+  section: "SQuaRE OSRE extension"
+  layer: physical
+
+leakage_error_rate:
+  value: 0.00001
+  unit: "error_probability_per_gate_proxy"
+  confidence: speculative
+  source: "Small leakage proxy for superconducting transmon; IBM has not published Heron r2-specific leakage rates — order-of-magnitude consistent with transmon literature"
+  date: "2024-12-01"
+  section: "SQuaRE OSRE extension"
+  layer: physical
+
+fabrication_variability_proxy:
+  value: 0.0
+  unit: "dimensionless_order_one"
+  confidence: speculative
+  source: "Placeholder OSRE variability slot; Heron r2 frequency spread not pinned in this profile"
+  date: "2024-12-01"
+  section: "SQuaRE OSRE extension"
+  layer: physical
+
+thermal_load_index_proxy:
+  value: 0.0
+  unit: "dimensionless_order_one"
+  confidence: speculative
+  source: "Placeholder OSRE thermal index; dilution refrigerator thermal budget not modeled here"
+  date: "2024-12-01"
+  section: "SQuaRE OSRE extension"
+  layer: physical
+
+control_plane_saturation_proxy:
+  value: 0.0
+  unit: "dimensionless_order_one"
+  confidence: speculative
+  source: "Placeholder OSRE control saturation; IBM Quantum System Two control wiring budget not publicly pinned"
+  date: "2024-12-01"
+  section: "SQuaRE OSRE extension"
+  layer: physical

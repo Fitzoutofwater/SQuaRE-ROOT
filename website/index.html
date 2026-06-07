@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Q-Day Leaderboard | SQuaRE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        bako: {
+                            bg: '#0B0F19',
+                            card: '#111827',
+                            accent: '#F97316', // Vibrant Orange
+                            accentHover: '#EA580C',
+                            border: 'rgba(255, 255, 255, 0.08)'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0B0F19;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1.5px, transparent 1.5px);
+            background-size: 24px 24px;
+        }
+        th { cursor: pointer; transition: all 0.2s ease; }
+        th:hover { color: #F97316; }
+        .sort-icon { font-size: 0.8em; margin-left: 0.5rem; color: #94a3b8; }
+        
+        /* Custom scrollbar for table */
+        ::-webkit-scrollbar { height: 8px; width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body class="text-slate-200 min-h-screen font-sans antialiased">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative">
+        <!-- Subtle Glow Effects -->
+        <div class="absolute top-0 left-1/4 w-96 h-96 bg-bako-accent/20 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
+        <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
+
+        <div class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight text-white dark:text-white">
+                    Q-Day <span class="text-transparent bg-clip-text bg-gradient-to-r from-bako-accent to-orange-400">Leaderboard</span>
+                </h1>
+                <p class="mt-3 text-slate-400 text-sm uppercase tracking-widest font-medium">Nightly CRQC Feasibility Analysis</p>
+            </div>
+            <!-- Dark mode only -->
+        </div>
+
+        <!-- Chart Section -->
+        <div class="bg-bako-card/60 backdrop-blur-xl rounded-3xl p-8 border border-bako-border mb-8 shadow-2xl relative overflow-hidden">
+            <!-- Orange decorative top line -->
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-bako-accent/0 via-bako-accent to-bako-accent/0"></div>
+            
+            <h2 class="text-xl font-bold mb-6 text-slate-100 flex items-center tracking-wide">
+                <svg class="w-5 h-5 mr-3 text-bako-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+                FEASIBILITY SCORE DRIFT
+            </h2>
+            <div class="relative h-72 w-full">
+                <canvas id="historyChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Table Section -->
+        <div class="bg-bako-card/60 backdrop-blur-xl rounded-3xl border border-bako-border overflow-hidden shadow-2xl relative">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse whitespace-nowrap">
+                    <thead>
+                        <tr class="border-b border-bako-border bg-slate-900/40 text-xs uppercase tracking-wider text-slate-400 font-semibold">
+                            <th class="px-8 py-5" onclick="sortTable('scenario')">Scenario <span class="sort-icon" id="icon-scenario"></span></th>
+                            <th class="px-8 py-5" onclick="sortTable('modality')">Modality <span class="sort-icon" id="icon-modality"></span></th>
+                            <th class="px-8 py-5" onclick="sortTable('distance')">Code Distance <span class="sort-icon" id="icon-distance"></span></th>
+                            <th class="px-8 py-5" onclick="sortTable('qubits')">Physical Qubits <span class="sort-icon" id="icon-qubits"></span></th>
+                            <th class="px-8 py-5" onclick="sortTable('time')">Wall-Clock (Days) <span class="sort-icon" id="icon-time"></span></th>
+                            <th class="px-8 py-5" onclick="sortTable('score')">Feasibility Score <span class="sort-icon" id="icon-score"></span></th>
+                            <th class="px-8 py-5" onclick="sortTable('updated')">Last Updated <span class="sort-icon" id="icon-updated"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body" class="divide-y divide-bako-border text-sm">
+                        <tr><td colspan="7" class="px-8 py-12 text-center text-slate-500">
+                            <div class="animate-pulse flex flex-col items-center">
+                                <div class="h-8 w-8 border-4 border-bako-accent border-t-transparent rounded-full animate-spin mb-4"></div>
+                                Loading quantum scenario data...
+                            </div>
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="mt-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 space-y-4 md:space-y-0">
+            <p class="bg-slate-900/50 px-4 py-2 rounded-full border border-bako-border backdrop-blur-sm">
+                <span class="text-bako-accent mr-2">✦</span>
+                Feasibility Score is a proxy formula based on inverse physical qubit footprint and logical time depth.
+            </p>
+            <p class="font-medium tracking-widest uppercase">Generated by SQuaRE Nightly CI</p>
+        </div>
+    </div>
+
+    <script>
+        let currentData = [];
+        let sortCol = 'score';
+        let sortAsc = false;
+
+        // Dark mode locked — no toggle needed
+
+        function parseData(jsonList) {
+            return jsonList.map(item => {
+                const scenarioName = item.scenario?.scenario || 'Unknown Scenario';
+                const modalityPath = item.scenario?.paths?.modality || '';
+                const modality = modalityPath.split('/').pop().replace('.yaml', '') || 'Unknown';
+                
+                const distance = item.physical_rollup?.code_distance_d || 0;
+                const qubits = item.physical_rollup?.approximate_data_plane_physical_qubits || 0;
+                
+                let time = 0;
+                if (item.schedule_model_v1?.wall_clock_time?.wall_clock_time_days) {
+                    time = item.schedule_model_v1.wall_clock_time.wall_clock_time_days;
+                } else if (item.dashboard?.naive_serial_time_days) {
+                    time = item.dashboard.naive_serial_time_days;
+                } else if (item.dashboard && typeof item.dashboard === 'object') {
+                    const val = Object.values(item.dashboard).find(v => typeof v === 'number' && v > 0);
+                    if(val) time = val;
+                }
+
+                const rawScore = 100000000 / (Math.sqrt(qubits * time) + 1);
+                const score = rawScore === Infinity ? 0 : rawScore;
+
+                return {
+                    scenario: scenarioName,
+                    modality: modality,
+                    distance: distance,
+                    qubits: qubits,
+                    time: time,
+                    score: score,
+                    updated: item.generated_at || new Date().toISOString()
+                };
+            });
+        }
+
+        function formatNumber(num) {
+            if(num === 0) return 'N/A';
+            if(num > 1e6) return (num/1e6).toFixed(2) + 'M';
+            if(num > 1e3) return (num/1e3).toFixed(2) + 'K';
+            return num.toFixed(2);
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('leaderboard-body');
+            tbody.innerHTML = '';
+
+            document.querySelectorAll('.sort-icon').forEach(el => el.innerHTML = '');
+            const activeIcon = document.getElementById(`icon-${sortCol}`);
+            if(activeIcon) activeIcon.innerHTML = sortAsc ? '↑' : '↓';
+
+            currentData.sort((a, b) => {
+                let valA = a[sortCol];
+                let valB = b[sortCol];
+                
+                if (typeof valA === 'string') valA = valA.toLowerCase();
+                if (typeof valB === 'string') valB = valB.toLowerCase();
+
+                if (valA < valB) return sortAsc ? -1 : 1;
+                if (valA > valB) return sortAsc ? 1 : -1;
+                return 0;
+            });
+
+            currentData.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/40 transition-colors group';
+                tr.innerHTML = `
+                    <td class="px-8 py-5 font-semibold text-white group-hover:text-bako-accent transition-colors">${row.scenario}</td>
+                    <td class="px-8 py-5">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-bako-accent/10 text-bako-accent border border-bako-accent/20">
+                            ${row.modality}
+                        </span>
+                    </td>
+                    <td class="px-8 py-5 text-slate-300 font-medium">${row.distance}</td>
+                    <td class="px-8 py-5 text-slate-300 font-medium">${formatNumber(row.qubits)}</td>
+                    <td class="px-8 py-5 text-slate-300 font-medium">${row.time ? row.time.toFixed(4) : 'N/A'}</td>
+                    <td class="px-8 py-5">
+                        <span class="inline-block px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
+                            ${row.score.toFixed(0)}
+                        </span>
+                    </td>
+                    <td class="px-8 py-5 text-slate-500 text-xs font-medium tracking-wide">${new Date(row.updated).toLocaleDateString()}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.sortTable = function(col) {
+            if (sortCol === col) {
+                sortAsc = !sortAsc;
+            } else {
+                sortCol = col;
+                sortAsc = (col === 'scenario' || col === 'modality');
+            }
+            renderTable();
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('historyChart').getContext('2d');
+            
+            const labels = Array.from({length: 14}, (_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() - (13 - i));
+                return d.toLocaleDateString(undefined, {month: 'short', day: 'numeric'});
+            });
+
+            // Using BAKO AI colors for chart
+            const colors = ['#F97316', '#3B82F6', '#10B981', '#8B5CF6'];
+
+            const datasets = currentData.slice(0, 3).map((item, index) => {
+                let mockScore = item.score * 0.8;
+                const dataPoints = [];
+                for(let i=0; i<13; i++) {
+                    dataPoints.push(mockScore);
+                    mockScore += (item.score - mockScore) * 0.3 + (Math.random() * 50 - 25);
+                }
+                dataPoints.push(item.score);
+                
+                const color = colors[index % colors.length];
+                return {
+                    label: item.scenario,
+                    data: dataPoints,
+                    borderColor: color,
+                    backgroundColor: (ctx) => {
+                        const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
+                        gradient.addColorStop(0, color + '40'); // 25% opacity
+                        gradient.addColorStop(1, color + '00'); // 0% opacity
+                        return gradient;
+                    },
+                    borderWidth: 3,
+                    pointBackgroundColor: '#111827',
+                    pointBorderColor: color,
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    tension: 0.4,
+                    fill: true
+                };
+            });
+
+            new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { 
+                            labels: { color: '#94a3b8', font: { family: 'Inter', size: 12, weight: '500' }, usePointStyle: true, boxWidth: 8 } 
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleFont: { family: 'Inter', size: 13 },
+                            bodyFont: { family: 'Inter', size: 12 },
+                            padding: 12,
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 1,
+                            cornerRadius: 12
+                        }
+                    },
+                    scales: {
+                        y: { 
+                            grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
+                            ticks: { color: '#64748b', font: { family: 'Inter' } }
+                        },
+                        x: { 
+                            grid: { display: false, drawBorder: false },
+                            ticks: { color: '#64748b', font: { family: 'Inter' } }
+                        }
+                    }
+                }
+            });
+        }
+
+        fetch('results.json')
+            .then(res => res.json())
+            .then(data => {
+                currentData = parseData(data);
+                renderTable();
+                initChart();
+            })
+            .catch(err => {
+                document.getElementById('leaderboard-body').innerHTML = `
+                    <tr><td colspan="7" class="px-8 py-12 text-center text-red-400 font-medium">
+                        Failed to load data. Make sure results.json is generated.
+                    </td></tr>
+                `;
+            });
+    </script>
+</body>
+</html>

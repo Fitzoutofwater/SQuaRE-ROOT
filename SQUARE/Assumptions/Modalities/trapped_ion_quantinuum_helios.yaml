@@ -1,0 +1,191 @@
+# Physical assumptions for the Quantinuum Helios trapped-ion quantum processor.
+# Helios is Quantinuum's 2025 flagship system, featuring >56 fully-connected trapped-ion qubits
+# with record-setting two-qubit gate fidelity (>99.9%). Trapped-ion gates are 100-1000x slower
+# than superconducting gates — this contrast is the interesting story this modality surfaces.
+document_id: trapped_ion_quantinuum_helios
+schema_version: 1
+primary_reference: >-
+  Quantinuum. Helios: Quantinuum's Quantum Charge-Coupled Device (QCCD) trapped-ion processor.
+  Quantinuum Technical Specifications and H-Series Benchmarks (2025).
+  https://www.quantinuum.com/hardware/helios
+date_issued: "2025-04-01"
+notes: >
+  Quantinuum Helios is the company's next-generation QCCD (Quantum Charge-Coupled Device)
+  trapped-ion processor following the H2 series. Helios achieves >99.9% two-qubit gate fidelity
+  with all-to-all connectivity, but native two-qubit gate times are in the millisecond regime —
+  orders of magnitude slower than superconducting platforms. This makes surface-code cycle times
+  dramatically longer, which the SQuaRE naive_serial_time heuristic will surface clearly.
+  Values below use Quantinuum's published H2 / Helios benchmark data as primary sources where
+  available; OSRE extension parameters are speculative placeholders consistent with the trapped-ion
+  literature (Bruzewicz et al. 2019 review, DOI: 10.1063/1.5088164).
+
+characteristic_physical_gate_error_rate:
+  value: 0.0008
+  unit: "error_probability_per_gate"
+  confidence: estimated
+  source: "Quantinuum (2025), Helios two-qubit gate fidelity >99.9% (error < 0.1%) — using 8e-4 as conservative estimate; consistent with published H2 benchmarks at 0.08-0.15% 2Q error"
+  date: "2025-04-01"
+  section: "Device benchmarks"
+  notes: >
+    Quantinuum H2 achieved median 2Q ZZ-gate error ~0.08% (8e-4). Helios targets further
+    improvement; 8e-4 is a conservative placeholder consistent with published H2 performance.
+    See: https://www.quantinuum.com/news/quantinuum-h2-sets-new-records
+  layer: physical
+
+surface_code_cycle_time:
+  value: 1000.0
+  unit: "microseconds"
+  confidence: low
+  source: "SQuaRE placeholder derived from trapped-ion native 2Q gate time ~1-3ms (Quantinuum H-series) + measurement overhead; syndrome extraction cycle O(1ms) = 1000µs"
+  date: "2025-04-01"
+  section: "SQuaRE placeholder"
+  notes: >
+    THIS IS THE KEY CONTRAST WITH SUPERCONDUCTING: trapped-ion 2Q gate times are ~1-3 ms
+    (1000-3000 µs) vs superconducting ~100 ns. A surface-code syndrome extraction requiring
+    multiple gate layers results in a QEC cycle time of O(1 ms), making naive_serial_time
+    dramatically longer than for superconducting modalities — this is expected physics.
+    Refine from Quantinuum's published compiled syndrome schedules for Helios.
+
+classical_control_reaction_time:
+  value: 500.0
+  unit: "microseconds"
+  confidence: low
+  source: "SQuaRE placeholder for trapped-ion classical control latency; Quantinuum QCCD architectures require ion shuttling which adds classical control overhead — O(100-500µs) per reaction"
+  date: "2025-04-01"
+  section: "SQuaRE placeholder"
+  notes: Trapped-ion architectures include ion shuttling delays in addition to classical electronics latency; 500µs is a conservative placeholder.
+
+connectivity_model:
+  value: "all_to_all_trapped_ion_qccd"
+  unit: "descriptor"
+  confidence: estimated
+  source: "Quantinuum (2025), Helios QCCD architecture; all-to-all connectivity via ion shuttling in charge-coupled device trap zones"
+  date: "2025-04-01"
+  section: "Architecture overview"
+  notes: All-to-all connectivity eliminates SWAP overhead present in nearest-neighbor superconducting architectures; QCCD shuttling substitutes for physical connectivity.
+  layer: physical
+
+platform_class:
+  value: "trapped_ion_qccd_quantinuum_helios"
+  unit: "descriptor"
+  confidence: estimated
+  source: "Quantinuum (2025), Helios product announcement and H-series architecture documentation"
+  date: "2025-04-01"
+  section: "Device overview"
+  layer: physical
+
+# Extended native physical layer (OSRE memo) — trapped-ion coherence times are much longer than superconducting.
+
+coherence_time_t1_microseconds:
+  value: 100000000.0
+  unit: "microseconds"
+  confidence: estimated
+  source: "Trapped-ion T1 (hyperfine qubit) is effectively infinite on algorithm timescales; >10^4 s demonstrated in laboratory settings (Bruzewicz et al. 2019, DOI: 10.1063/1.5088164)"
+  date: "2025-04-01"
+  section: "Device characterisation"
+  notes: >
+    Trapped-ion hyperfine qubits have T1 times on the order of years in principle; T1 is
+    not the dominant decoherence mechanism. Value 1e8 µs (100 seconds) is a practical
+    lower bound from published trapped-ion experiments.
+  layer: physical
+
+coherence_time_t2_microseconds:
+  value: 10000000.0
+  unit: "microseconds"
+  confidence: estimated
+  source: "Quantinuum H2 T2 coherence > seconds demonstrated; Bruzewicz et al. (2019) review reports T2 > 100s for hyperfine ions in well-shielded traps. DOI: 10.1063/1.5088164"
+  date: "2025-04-01"
+  section: "Device characterisation"
+  notes: >
+    T2 (Ramsey) coherence for Quantinuum H-series > 1 second. Value 1e7 µs (10 seconds)
+    is conservative; the dominant noise source is motional heating and control fluctuations,
+    not qubit relaxation.
+  layer: physical
+
+single_qubit_gate_error_rate:
+  value: 0.00002
+  unit: "error_probability_per_gate"
+  confidence: estimated
+  source: "Quantinuum H2 single-qubit gate fidelity >99.998% (error ~2e-5); Quantinuum benchmark reports 2024-2025. https://www.quantinuum.com/hardware"
+  date: "2025-04-01"
+  section: "Device benchmarks"
+  notes: 1Q gate error for Quantinuum H-series is world-leading at ~2e-5; Helios targets similar or better.
+  layer: physical
+
+two_qubit_gate_error_rate:
+  value: 0.0008
+  unit: "error_probability_per_gate"
+  confidence: estimated
+  source: "Quantinuum H2 median 2Q ZZ gate error ~0.08% (8e-4); Helios targets <0.1% with further improvements. Quantinuum benchmark reports 2024-2025"
+  date: "2025-04-01"
+  section: "Device benchmarks"
+  notes: Best-in-class 2Q fidelity among all quantum computing platforms as of 2025; consistent with characteristic_physical_gate_error_rate.
+  layer: physical
+
+measurement_error_rate:
+  value: 0.003
+  unit: "error_probability_per_shot"
+  confidence: estimated
+  source: "Quantinuum H2 SPAM (state preparation and measurement) error ~0.3%; consistent with published H-series benchmarks and Bruzewicz et al. (2019) DOI: 10.1063/1.5088164"
+  date: "2025-04-01"
+  section: "Device benchmarks"
+  notes: SPAM error includes state preparation and measurement; ~0.3% is a median proxy from H2 data.
+  layer: physical
+
+idle_error_rate_per_cycle:
+  value: 0.000000001
+  unit: "error_probability_per_idle_slot_proxy"
+  confidence: speculative
+  source: "SQuaRE proxy: trapped-ion T1 >> QEC cycle time, so idle decoherence per cycle is negligible; dominated by gate errors, not idling"
+  date: "2025-04-01"
+  section: "SQuaRE OSRE extension"
+  notes: For trapped-ion qubits, idle error per ~1ms QEC cycle is ~cycle_time/T1 = 1e-3/1e8 = 1e-11; floored at 1e-9 as a practical minimum proxy.
+  layer: physical
+
+correlated_noise_parameter:
+  value: 1.0
+  unit: "dimensionless_multiplier"
+  confidence: speculative
+  source: "Baseline; ion-crystal motional modes can introduce correlated errors in multi-qubit operations — not modeled explicitly in this SQuaRE profile"
+  date: "2025-04-01"
+  section: "SQuaRE OSRE extension"
+  notes: Motional-mode crosstalk may introduce correlated errors in trapped-ion systems; a multiplier > 1 may be appropriate in a detailed model.
+  layer: physical
+
+leakage_error_rate:
+  value: 0.000001
+  unit: "error_probability_per_gate_proxy"
+  confidence: speculative
+  source: "Trapped-ion leakage to motional modes or nearby hyperfine levels; small but nonzero — 1e-6 is an order-of-magnitude placeholder from trapped-ion literature"
+  date: "2025-04-01"
+  section: "SQuaRE OSRE extension"
+  layer: physical
+
+fabrication_variability_proxy:
+  value: 0.0
+  unit: "dimensionless_order_one"
+  confidence: speculative
+  source: "Placeholder OSRE variability slot; trapped-ion qubits are identical atomic species by nature, so fabrication variability is minimal vs superconducting"
+  date: "2025-04-01"
+  section: "SQuaRE OSRE extension"
+  notes: Trapped-ion platforms have inherently identical qubits (atomic species), eliminating fabrication variability as a noise source.
+  layer: physical
+
+thermal_load_index_proxy:
+  value: 0.0
+  unit: "dimensionless_order_one"
+  confidence: speculative
+  source: "Placeholder OSRE thermal index; trapped-ion systems operate at room temperature or modest vacuum cooling — dilution refrigerator not required"
+  date: "2025-04-01"
+  section: "SQuaRE OSRE extension"
+  notes: Trapped-ion systems do not require cryogenic cooling unlike superconducting platforms; thermal load profile is fundamentally different.
+  layer: physical
+
+control_plane_saturation_proxy:
+  value: 0.0
+  unit: "dimensionless_order_one"
+  confidence: speculative
+  source: "Placeholder OSRE control saturation; laser / RF control wiring budget for Helios not publicly detailed"
+  date: "2025-04-01"
+  section: "SQuaRE OSRE extension"
+  layer: physical

@@ -1,0 +1,30 @@
+# ECDLP secp256k1 (256-bit) using Quantinuum Helios trapped-ion baseline + Babbush et al. (2026) low-Toffoli algorithm envelope.
+# Key insight: Helios has exceptional gate fidelity (>99.9%) but trapped-ion gate times are 100-1000x slower
+# than superconducting — the naive_serial_time_days will be dramatically larger, surfacing the speed/fidelity tradeoff.
+schema_version: 1
+scenario: ecdlp_secp256k1_quantinuum_helios
+description: >-
+  ECDLP secp256k1 (256-bit) paired with the Quantinuum Helios trapped-ion modality (QCCD architecture,
+  all-to-all connectivity, 2Q gate fidelity >99.9%) and the Babbush et al. (2026) low-Toffoli algorithm
+  envelope (≤1450 logical qubits, ≤70M Toffoli gates). The key story is the dramatic wall-clock time
+  contrast vs superconducting: trapped-ion QEC cycle time is ~1ms vs ~1µs for superconducting,
+  making the naive serial runtime 1000x longer — a critical cross-modality comparison datapoint.
+  Identity QCVV/QEM (σ=s=Γ=1) for baseline comparison.
+
+target:
+  problem: ecdlp_secp256k1_256_bit
+  curve_bit_length: 256
+  ecdlp_variant: low_toffoli_variant
+
+qec:
+  distance_policy: heuristic_union_bound
+  logical_error_budget: 0.1
+
+paths:
+  modality: Assumptions/Modalities/trapped_ion_quantinuum_helios.yaml
+  qec_code: Assumptions/QEC_Codes/surface_gidney_ekera_2021.yaml
+  magic: Assumptions/MagicStateProduction/ccz_factory_gidney_ekera_2021.yaml
+  magic_aux: Assumptions/MagicStateProduction/t_factory_fallback_gidney_ekera_2021.yaml
+  algorithm: Algorithms/ecdlp_secp256k1_babbush_et_al_2026.yaml
+  qcvv: Assumptions/QCVV/identity_no_overhead.yaml
+  qem: Assumptions/QEM/identity_no_overhead.yaml

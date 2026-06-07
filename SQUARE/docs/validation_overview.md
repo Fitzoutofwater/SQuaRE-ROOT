@@ -98,3 +98,27 @@ The **Oratomic gold path** [`Configs/oratomic_gold_path.yaml`](../Configs/oratom
 ### How to tighten alignment
 
 Pin **native error**, **syndrome / cycle times**, and **physical footprint** from the paper’s main text into the modality and QEC files; replace the patch formula when you have layout constants that map cleanly into SQuaRE’s `d`-based dashboard hooks or extend the engine for LDPC-specific parameters.
+
+---
+
+<a id="cross-modality-contrast-superconducting-vs-trapped-ion"></a>
+
+## Cross-Modality Contrast: IBM Heron r2 vs Quantinuum Helios vs Superconducting Baseline
+
+**New modalities added:** `superconducting_ibm_heron_r2` and `trapped_ion_quantinuum_helios`.
+
+These two new entries enable the **first cross-modality comparison** in SQuaRE: running the same ECDLP algorithm envelope through radically different physical stacks. The defining contrast is that **trapped-ion gate times are 100–1000× slower than superconducting**, which dominates the `naive_serial_time` even when gate fidelity is dramatically better.
+
+### Key insight: the speed/fidelity tradeoff
+
+| Modality | 2Q gate error | QEC cycle time | Expected naive serial time |
+|----------|--------------|----------------|---------------------------|
+| Superconducting (Babbush 2026) | ~1×10⁻³ | ~1 µs | ~0.8 days (70 s serial proxy) |
+| IBM Heron r2 | ~3×10⁻⁴ | ~1 µs | Lower qubit count due to smaller `d` |
+| Quantinuum Helios (trapped-ion) | ~8×10⁻⁴ | ~1000 µs | **~1000× longer** than superconducting |
+
+Quantinuum Helios achieves world-leading gate fidelity but at the cost of millisecond-scale gate times. For 70M Toffoli gates, the naive serial runtime grows by a factor of ~1000 compared to superconducting — the correct physical picture and a key datapoint for SQuaRE's cross-modality mission.
+
+### Configs
+- `Configs/ecdlp_secp256k1_ibm_heron_r2_low_toffoli.yaml` — Heron r2 superconducting baseline
+- `Configs/ecdlp_secp256k1_quantinuum_helios.yaml` — Quantinuum Helios trapped-ion baseline

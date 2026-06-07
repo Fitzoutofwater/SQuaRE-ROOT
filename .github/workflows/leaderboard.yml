@@ -1,0 +1,75 @@
+name: Q-Day Leaderboard
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 0 * * *' # Nightly
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install SQuaRE
+        run: |
+          pip install -e SQUARE
+          
+      - name: Generate Scenario Reports
+        id: generate
+        run: |
+          mkdir -p website
+          echo "[" > website/results.json
+          first=1
+          
+          # Initialize markdown table for GitHub Step Summary
+          echo "## 📊 Q-Day Leaderboard Run Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Scenario File | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------------|--------|" >> $GITHUB_STEP_SUMMARY
+          
+          # Loop through all configs
+          for file in SQUARE/Configs/*.yaml; do
+            if [ -f "$file" ]; then
+              if [ "$first" -eq 0 ]; then echo "," >> website/results.json; fi
+              first=0
+              
+              echo "Processing $file..."
+              if square-report "$file" >> website/results.json; then
+                echo "| \`$(basename "$file")\` | 🟢 Success |" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "| \`$(basename "$file")\` | 🔴 Failed |" >> $GITHUB_STEP_SUMMARY
+                echo "::error file=$file::Failed to generate report for $file"
+                exit 1 # Fails loudly as per acceptance criteria
+              fi
+            fi
+          done
+          
+          echo "]" >> website/results.json
+          
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'website'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
