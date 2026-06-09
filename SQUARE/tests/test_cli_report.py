@@ -21,7 +21,9 @@ def test_square_report_cli_rejects_non_positive_modulus_override() -> None:
     assert main(["_no_such_file.yaml", "--n", "-2048"]) == 2
 
 
-def test_square_report_cli_json_smoke(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_square_report_cli_json_smoke(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     root = find_square_root()
     monkeypatch.chdir(tmp_path)
     scenario = root / "Configs" / "oratomic_gold_path.yaml"
@@ -59,3 +61,41 @@ def test_square_report_cli_writes_valid_json_to_stdout(
     data = json.loads(out)
     assert data["report_contract_version"] == REPORT_CONTRACT_VERSION
     assert "dashboard" in data
+
+
+def test_square_report_cli_writes_sankey_svg(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = find_square_root()
+    monkeypatch.chdir(tmp_path)
+    scenario = root / "Configs" / "oratomic_gold_path.yaml"
+    out = tmp_path / "oratomic_sankey.svg"
+    code = main(
+        [str(scenario), "--root", str(root), "--sankey", "--sankey-output", str(out)]
+    )
+
+    assert code == 0
+    assert out.is_file()
+    svg = out.read_text(encoding="utf-8")
+    assert svg.startswith('<svg xmlns="http://www.w3.org/2000/svg"')
+    assert "Physical layer" in svg
+    assert "CRQC feasibility" in svg
+    assert "oratomic_gold_path" in svg
+
+    err = capsys.readouterr().err
+    assert "wrote Sankey" in err
+
+
+def test_square_report_cli_writes_sankey_default_path(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = find_square_root()
+    monkeypatch.chdir(tmp_path)
+    scenario = root / "Configs" / "oratomic_gold_path.yaml"
+    code = main([str(scenario), "--root", str(root), "--sankey"])
+
+    assert code == 0
+    out = tmp_path / "oratomic_gold_path_report_sankey.svg"
+    assert out.is_file()
+    assert "Operations budget" in out.read_text(encoding="utf-8")
+    assert str(out.resolve()) in capsys.readouterr().err
