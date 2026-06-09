@@ -43,7 +43,13 @@ def main(argv: list[str] | None = None) -> int:
         metavar="DISTANCE",
         help="Override surface-code distance d (evaluates QEC patch qubit formula).",
     )
-    parser.add_argument(
+    output_format = parser.add_mutually_exclusive_group()
+    output_format.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit a JSON report (the default; flag is accepted explicitly for tooling).",
+    )
+    output_format.add_argument(
         "--markdown",
         action="store_true",
         help="Emit Markdown summary instead of JSON.",

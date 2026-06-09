@@ -30,6 +30,26 @@ def test_square_report_cli_json_smoke(tmp_path: Path, monkeypatch: pytest.Monkey
     assert code == 0
 
 
+def test_square_report_cli_accepts_explicit_json_flag(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The leaderboard tooling invokes ``square-report --json``; JSON is the default,
+    # so --json must be accepted as an explicit no-op (regression for #6 build break).
+    root = find_square_root()
+    monkeypatch.chdir(tmp_path)
+    scenario = root / "Configs" / "oratomic_gold_path.yaml"
+    code = main([str(scenario), "--json", "--root", str(root)])
+    assert code == 0
+    data = json.loads(capsys.readouterr().out.strip())
+    assert data["report_contract_version"] == REPORT_CONTRACT_VERSION
+
+
+def test_square_report_cli_rejects_json_with_markdown() -> None:
+    with pytest.raises(SystemExit) as exc:
+        main(["_no_such_file.yaml", "--json", "--markdown"])
+    assert exc.value.code == 2
+
+
 def test_square_report_cli_rejects_scenario_outside_root(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
